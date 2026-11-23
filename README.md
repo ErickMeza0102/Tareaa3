@@ -2,7 +2,9 @@
 
 Repositorio: https://github.com/ErickMeza0102/Tareaa3
 
-Cada problema quedó en un commit distinto de la rama `main`, en este orden:
+El código de los cuatro problemas se subió en un primer commit y, a partir de ahí,
+cada problema tiene su propio commit en `main` con su resultado y su gráfica.
+No se usaron ramas ni repositorios separados.
 
 1. `problema1_grayscale.py`: capa personalizada que convierte RGB a escala de grises.
 2. `problema2_funciones.py`: aproximación de `3·sin(πx)` y `1+2x+4x³` en `[-1,1]`.
