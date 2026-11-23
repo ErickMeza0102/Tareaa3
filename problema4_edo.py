@@ -52,35 +52,37 @@ def entrenar(orden):
     modelo = construir()
     optim = tf.keras.optimizers.Adam(LR)
     for _ in range(EPOCHS):
-        with tf.GradientTape(persistent=True) as tape2:
-            tape2.watch(x)
-            with tf.GradientTape(persistent=True) as tape1:
-                tape1.watch(x)
+        # El tape externo debe envolver TAMBIEN el calculo de la perdida:
+        # asi loss depende de dy/d2y y los gradientes llegan a los pesos.
+        with tf.GradientTape(persistent=True) as outer:
+            outer.watch(x)
+            with tf.GradientTape(persistent=True) as inner:
+                inner.watch(x)
                 y = modelo(x, training=True)
-            dy = tape1.gradient(y, x)
-        if orden == 2:
-            d2y = tape2.gradient(dy, x)
+            dy = inner.gradient(y, x)
+            if orden == 2:
+                d2y = outer.gradient(dy, x)
 
-        with tf.GradientTape() as tape_bc:
-            tape_bc.watch(x0)
-            y0 = modelo(x0, training=True)
-        if orden == 2:
-            dy0 = tape_bc.gradient(y0, x0)
+            with tf.GradientTape(persistent=True) as bc_tape:
+                bc_tape.watch(x0)
+                y0 = modelo(x0, training=True)
+            if orden == 2:
+                dy0 = bc_tape.gradient(y0, x0)
 
-        if orden == 1:
-            residuo = x * dy + y - x ** 2 * tf.cos(x)
-            residuo = tf.boolean_mask(residuo, mask)
-            loss = tf.reduce_mean(residuo ** 2) + 10 * tf.reduce_mean(y0 ** 2)
-        else:
-            residuo = d2y + y
-            loss = (tf.reduce_mean(residuo ** 2)
-                    + 10 * tf.reduce_mean((y0 - 1.0) ** 2)
-                    + 10 * tf.reduce_mean((dy0 + 0.5) ** 2))
+            if orden == 1:
+                residuo = x * dy + y - x ** 2 * tf.cos(x)
+                residuo = tf.boolean_mask(residuo, mask)
+                loss = (tf.reduce_mean(residuo ** 2)
+                        + 10 * tf.reduce_mean(y0 ** 2))
+            else:
+                residuo = d2y + y
+                loss = (tf.reduce_mean(residuo ** 2)
+                        + 10 * tf.reduce_mean((y0 - 1.0) ** 2)
+                        + 10 * tf.reduce_mean((dy0 + 0.5) ** 2))
 
-        grads = tape2.gradient(loss, modelo.trainable_variables) if orden == 2 \
-            else tape1.gradient(loss, modelo.trainable_variables)
+        grads = outer.gradient(loss, modelo.trainable_variables)
         optim.apply_gradients(zip(grads, modelo.trainable_variables))
-        del tape1, tape2
+        del outer, inner, bc_tape
     return modelo
 
 
